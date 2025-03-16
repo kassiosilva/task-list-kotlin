@@ -4,15 +4,26 @@ import java.util.UUID
 /**
  * 1. Criar classe de dados ✅
  * 2. Utilize companion object para gerar IDs únicos automaticamente para cada Task ✅
- *
+ * 3. Implemente uma classe `TaskManager` com: ✅
+ *     - Uma lista de tarefas (`tasks`) inicializada como uma lista vazia. (OK)
+ *     - Métodos para:
+ *         - **Adicionar uma nova tarefa.** (OK)
+ *         - **Listar todas as tarefas (destruturando `title` e `isCompleted`).** (Ok)
+ *         - **Buscar uma tarefa por ID.** (Ok)
+ *         - **Atualizar o status (`isCompleted`) de uma tarefa específica.**(Ok)
+ *         - **Excluir uma tarefa pelo ID.**
+ *         - **Filtrar tarefas concluídas ou pendentes usando `filter`.** (Ok)
+ * 4. Use funções de validação como `require` para garantir que:
+ *     - O título de uma tarefa não esteja vazio.
+ *     - A tarefa existe antes de realizar operações como atualizar ou excluir.
  * **/
 
 
 data class Task(
     val id: String = generateId(),
     val title: String,
+    var isCompleted: Boolean,
     val description: String? = null,
-    val isCompleted: Boolean,
     var createdAt: Date = Date()
 ) {
     companion object {
@@ -21,10 +32,47 @@ data class Task(
 }
 
 
+class TaskManager {
+    private val tasks = mutableListOf<Task>(
+        Task(title = "Teste 1", isCompleted = false),
+        Task(title = "Teste 2", isCompleted = true),
+        Task(title = "Teste 3", isCompleted = false),
+        Task(title = "Teste 4", isCompleted = true),
+
+    )
+
+    fun addNewTask(task: Task) = tasks.add(task)
+
+    fun listTasks(): String {
+        return tasks.joinToString(
+            separator = "\n",
+            transform = { (id, title, isCompleted) -> "$title, status: ${if (isCompleted) "Concluído" else "Pendente"}, id: $id" })
+    }
+
+    fun findTask(id: String) = tasks.find { id == it.id }
+
+    fun updateTask(id: String, isCompleted: Boolean): Boolean {
+        val taskPosition = tasks.indexOfFirst { id == it.id }
+
+        if (taskPosition == -1) {
+            return false
+        }
+
+        tasks[taskPosition].isCompleted = isCompleted
+
+        return true
+    }
+
+    fun removeTask(id: String) = tasks.removeIf { it.id == id }
+
+    fun findTasksByStatus(isCompleted: Boolean): List<Task> {
+        return tasks.filter { it.isCompleted == isCompleted }
+    }
+}
+
+
 fun main() {
-    println("Hello World!")
+    val taskManager = TaskManager()
 
-    println(Task(title = "Teste 1", isCompleted = false))
-    println(Task(title = "Teste 2", isCompleted = true))
-
+    println(taskManager.listTasks())
 }

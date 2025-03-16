@@ -33,21 +33,11 @@ data class Task(
 
 
 class TaskManager {
-    private val tasks = mutableListOf<Task>(
-        Task(title = "Teste 1", isCompleted = false),
-        Task(title = "Teste 2", isCompleted = true),
-        Task(title = "Teste 3", isCompleted = false),
-        Task(title = "Teste 4", isCompleted = true),
-
-    )
+    private val tasks = mutableListOf<Task>()
 
     fun addNewTask(task: Task) = tasks.add(task)
 
-    fun listTasks(): String {
-        return tasks.joinToString(
-            separator = "\n",
-            transform = { (id, title, isCompleted) -> "$title, status: ${if (isCompleted) "Concluído" else "Pendente"}, id: $id" })
-    }
+    fun listTasks() = tasks.toList()
 
     fun findTask(id: String) = tasks.find { id == it.id }
 
@@ -73,6 +63,49 @@ class TaskManager {
 
 fun main() {
     val taskManager = TaskManager()
+    var action: Int? = null
 
-    println(taskManager.listTasks())
+    while (action != 6) {
+        println(
+            """
+                
+            +--+--+--+--+--+--+--+--+--+--+
+            |          TaskList           |
+            +--+--+--+--+--+--+--+--+--+--+
+            | 1 - Adicionar               |
+            | 2 - Atualizar status        |
+            | 3 - Buscar                  |
+            | 4 - Deletar                 |
+            | 5 - Buscar por status       |
+            | 6 - Sair                    |
+            +--+--+--+--+--+--+--+--+--+--+
+        
+            """.trimIndent()
+        )
+
+        println("Suas tarefas:")
+        println(
+            taskManager.listTasks().joinToString(
+                separator = "\n",
+                transform = { (id, title, isCompleted) ->
+                    "Título: $title, status: ${if (isCompleted) "Concluído" else "Pendente"}, id: $id"
+                }
+            ).ifEmpty { "Nenhuma task adicionada." }
+        )
+
+        print("-> ")
+        action = readlnOrNull()?.toIntOrNull()
+
+        when (action) {
+            1 -> {}
+            2 -> {}
+            3 -> {}
+            4 -> {}
+            5 -> {}
+            6 -> {
+                println("Obrigado. Volte sempre!")
+            }
+            else -> println("Opcão escolhida é inválida. Tente novamente.")
+        }
+    }
 }

@@ -22,7 +22,7 @@ import java.util.UUID
 data class Task(
     val id: String = generateId(),
     val title: String,
-    var isCompleted: Boolean,
+    var isCompleted: Boolean = false,
     val description: String? = null,
     var createdAt: Date = Date()
 ) {
@@ -31,9 +31,15 @@ data class Task(
     }
 }
 
-
 class TaskManager {
-    private val tasks = mutableListOf<Task>()
+    private val tasks = mutableListOf<Task>(
+        Task(title = "Teste 1"),
+        Task(title = "Teste 2"),
+        Task(title = "Teste 3"),
+        Task(title = "Teste 4"),
+        Task(title = "Teste 5"),
+        Task(title = "Teste 6"),
+    )
 
     fun addNewTask(task: Task) = tasks.add(task)
 
@@ -60,6 +66,26 @@ class TaskManager {
     }
 }
 
+val statusTask = { isCompleted: Boolean -> if (isCompleted) "Concluída" else "Pendente" }
+
+fun actionCreateTask(): Task {
+    var title: String? = null
+    println("Insira o TÍTULO da tarefa:")
+    while (title.isNullOrBlank()) {
+        print("-> ")
+        title = readlnOrNull()
+
+        if (title.isNullOrBlank()) {
+            println("O nome inserido é inválido. Tente novamente.")
+        }
+    }
+
+    println("Insira a DESCRIÇÃO da tarefa:")
+    val description: String? = readlnOrNull()
+    print("-> ")
+
+    return Task(title = title, description = description)
+}
 
 fun main() {
     val taskManager = TaskManager()
@@ -83,12 +109,12 @@ fun main() {
             """.trimIndent()
         )
 
-        println("Suas tarefas:")
+        println("SUAS TAREFAS:")
         println(
             taskManager.listTasks().joinToString(
                 separator = "\n",
                 transform = { (id, title, isCompleted) ->
-                    "Título: $title, status: ${if (isCompleted) "Concluído" else "Pendente"}, id: $id"
+                    "ID: $id, TÍTULO: $title, STATUS: ${statusTask(isCompleted)}"
                 }
             ).ifEmpty { "Nenhuma task adicionada." }
         )
@@ -97,14 +123,70 @@ fun main() {
         action = readlnOrNull()?.toIntOrNull()
 
         when (action) {
-            1 -> {}
-            2 -> {}
+            1 -> {
+                val task = actionCreateTask()
+
+                taskManager.addNewTask(task = task)
+
+                println("A task foi criada com SUCESSO!")
+            }
+
+            2 -> {
+                var id: String? = null
+
+                println("Insira o ID da tarefa para atualizar seu status:")
+                while (id.isNullOrBlank()) {
+                    print("-> ")
+                    id = readlnOrNull()
+
+                    if (id.isNullOrBlank() || taskManager.findTask(id = id) == null) {
+                        println("O ID inserido é inválido. Insira novamente.")
+                        id = null
+                    }
+                }
+
+                val taskToBeUpdated = taskManager.findTask(id = id)
+
+                taskToBeUpdated?.let { (_, _, isCompleted) ->
+                    var status: Int? = null
+                    println(
+                        "Essa tarefa está com o STATUS: ${statusTask(isCompleted)}. Gostaria de mudar para ${
+                            statusTask(
+                                !isCompleted
+                            )
+                        }?"
+                    )
+
+                    while(status == null) {
+                        print("Digite 1 para SIM ou 2 para NÃO -> ")
+                        status = readlnOrNull()?.toIntOrNull()
+
+                        if (status == null) {
+                            println("Opção inválida. Tente novamente.")
+                        }
+                    }
+
+                    when (status) {
+                        1 -> {
+                            if (taskManager.updateTask(id = id, isCompleted = !isCompleted)) {
+                                println("Tarefa atualizada com sucesso!")
+                            } else {
+                                println("Não foi possível atualizar sua tarefa.")
+                            }
+                        }
+                        else -> println("OK! Sua tarefa continua com o mesmo status.")
+                    }
+                }
+
+            }
+
             3 -> {}
             4 -> {}
             5 -> {}
             6 -> {
                 println("Obrigado. Volte sempre!")
             }
+
             else -> println("Opcão escolhida é inválida. Tente novamente.")
         }
     }

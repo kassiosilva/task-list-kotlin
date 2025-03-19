@@ -1,23 +1,7 @@
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import java.util.UUID
-
-/**
- * 1. Criar classe de dados ✅
- * 2. Utilize companion object para gerar IDs únicos automaticamente para cada Task ✅
- * 3. Implemente uma classe `TaskManager` com: ✅
- *     - Uma lista de tarefas (`tasks`) inicializada como uma lista vazia. (OK)
- *     - Métodos para:
- *         - **Adicionar uma nova tarefa.** (OK)
- *         - **Listar todas as tarefas (destruturando `title` e `isCompleted`).** (Ok)
- *         - **Buscar uma tarefa por ID.** (Ok)
- *         - **Atualizar o status (`isCompleted`) de uma tarefa específica.**(Ok)
- *         - **Excluir uma tarefa pelo ID.**
- *         - **Filtrar tarefas concluídas ou pendentes usando `filter`.** (Ok)
- * 4. Use funções de validação como `require` para garantir que:
- *     - O título de uma tarefa não esteja vazio.
- *     - A tarefa existe antes de realizar operações como atualizar ou excluir.
- * **/
-
 
 data class Task(
     val id: String = generateId(),
@@ -31,46 +15,86 @@ data class Task(
     }
 }
 
-class TaskManager {
-    private val tasks = mutableListOf<Task>(
-        Task(title = "Teste 1"),
-        Task(title = "Teste 2"),
-        Task(title = "Teste 3"),
-        Task(title = "Teste 4"),
-        Task(title = "Teste 5"),
-        Task(title = "Teste 6"),
-        Task(title = "Teste 7", isCompleted = true),
-        Task(title = "Teste 8", isCompleted = true),
-        Task(title = "Teste 9"),
-        Task(title = "Teste 10", isCompleted = true),
-    )
+sealed class Result {
+    data class Success(val message: String) : Result()
+    data class Error(val exception: Exception) : Result()
+}
 
-    fun addNewTask(task: Task) = tasks.add(task)
+fun handleResult(result: Result) {
+    println(
+        when (result) {
+            is Result.Error -> result.exception.message
+            is Result.Success -> result.message
+        }
+    )
+}
+
+val statusTask = { isCompleted: Boolean -> if (isCompleted) "Concluída" else "Pendente" }
+
+class TaskManager {
+    private val tasks = mutableListOf<Task>()
+
+    fun addNewTask(task: Task): Result {
+        try {
+            require(task.title.isNotBlank()) { "\nO título da tarefa não pode ser vazio." }
+
+            tasks.add(task)
+
+            return Result.Success(message = "\nA tarefa foi criada com SUCESSO!")
+        } catch (error: Exception) {
+            return Result.Error(exception = error)
+        }
+
+    }
 
     fun listTasks() = tasks.toList()
 
     fun findTask(id: String) = tasks.find { id == it.id }
 
-    fun updateTask(id: String, isCompleted: Boolean): Boolean {
-        val taskPosition = tasks.indexOfFirst { id == it.id }
+    fun updateTask(id: String, isCompleted: Boolean): Result {
+        try {
+            val taskPosition = tasks.indexOfFirst { id == it.id }
 
-        if (taskPosition == -1) {
-            return false
+            check(taskPosition != -1) { "\nA tarefa não existe na lista." }
+
+            tasks[taskPosition].isCompleted = isCompleted
+
+            return Result.Success(message = "\nTarefa atualizada com sucesso!")
+        } catch (error: Exception) {
+            return Result.Error(exception = error)
         }
-
-        tasks[taskPosition].isCompleted = isCompleted
-
-        return true
     }
 
-    fun removeTask(id: String) = tasks.removeIf { it.id == id }
+    fun removeTask(id: String): Result {
+        try {
+            check(tasks.any { id == it.id }) { "\nNão existe nenhuma tarefa com esse ID." }
+
+            tasks.removeIf { it.id == id }
+
+            return Result.Success("\nA tarefa foi deletada com SUCESSO.")
+        } catch (error: Exception) {
+            return Result.Error(exception = error)
+        }
+    }
 
     fun findTasksByStatus(isCompleted: Boolean): List<Task> {
         return tasks.filter { it.isCompleted == isCompleted }
     }
 }
 
-val statusTask = { isCompleted: Boolean -> if (isCompleted) "Concluída" else "Pendente" }
+fun Task.toFormattedString(): String {
+    val simpleDateFormat =
+        SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("pt", "BR"))
+
+    val dateFormatted = simpleDateFormat.format(this.createdAt)
+
+    return "ID: $id, Título: $title, status: ${statusTask(isCompleted)}, Criada em: $dateFormatted"
+}
+
+fun List<Task>.countCompletedTasks(): Int {
+    return this.count { it.isCompleted }
+}
+
 
 fun actionCreateTask(): Task {
     var title: String? = null
@@ -85,8 +109,8 @@ fun actionCreateTask(): Task {
     }
 
     println("Insira a DESCRIÇÃO da tarefa:")
-    val description: String? = readlnOrNull()
     print("-> ")
+    val description: String? = readlnOrNull()
 
     return Task(title = title, description = description)
 }
@@ -113,56 +137,126 @@ fun main() {
             """.trimIndent()
         )
 
-        println("SUAS TAREFAS:")
+        if (taskManager.listTasks().countCompletedTasks() > 0) {
+            println("TAREFAS COMPLETAS: ${taskManager.listTasks().countCompletedTasks()}")
+        }
+
+        println("LISTA DE TAREFAS:")
         println(
             taskManager.listTasks().joinToString(
                 separator = "\n",
-                transform = { (id, title, isCompleted) ->
-                    "ID: $id, TÍTULO: $title, STATUS: ${statusTask(isCompleted)}"
-                }
+                transform = { task -> task.toFormattedString() }
             ).ifEmpty { "Nenhuma task adicionada." }
         )
 
+        println("\nDigite a ação de tarefa: ")
         print("-> ")
         action = readlnOrNull()?.toIntOrNull()
 
-        when (action) {
-            1 -> {
-                val task = actionCreateTask()
+        if (action in 2..5 && taskManager.listTasks().isEmpty()) {
+            println("É preciso adicionar uma tarefa primeiro.")
+            action = null
+        } else {
+            when (action) {
+                1 -> {
+                    val task = actionCreateTask()
 
-                taskManager.addNewTask(task = task)
-
-                println("A task foi criada com SUCESSO!")
-            }
-
-            2 -> {
-                var id: String? = null
-
-                println("Insira o ID da tarefa para atualizar seu status:")
-                while (id.isNullOrBlank()) {
-                    print("-> ")
-                    id = readlnOrNull()
-
-                    if (id.isNullOrBlank() || taskManager.findTask(id = id) == null) {
-                        println("O ID inserido é inválido. Insira novamente.")
-                        id = null
-                    }
+                    handleResult(taskManager.addNewTask(task = task))
                 }
 
-                val taskToBeUpdated = taskManager.findTask(id = id)
+                2 -> {
+                    var id: String? = null
 
-                taskToBeUpdated?.let { (id, _, isCompleted) ->
-                    var status: Int? = null
+                    println("Insira o ID da tarefa para atualizar seu status:")
+                    while (id.isNullOrBlank()) {
+                        print("-> ")
+                        id = readlnOrNull()
+
+                        if (id.isNullOrBlank() || taskManager.findTask(id = id) == null) {
+                            println("O ID inserido é inválido. Insira novamente.")
+                            id = null
+                        }
+                    }
+
+                    val taskToBeUpdated = taskManager.findTask(id = id)
+
+                    taskToBeUpdated?.let { (id, _, isCompleted) ->
+                        var status: Int? = null
+                        println(
+                            "Essa tarefa está com o STATUS: ${statusTask(isCompleted)}. Gostaria de mudar para ${
+                                statusTask(
+                                    !isCompleted
+                                )
+                            }?"
+                        )
+
+                        while (status == null) {
+                            print("Digite 1 para SIM ou 2 para NÃO -> ")
+                            status = readlnOrNull()?.toIntOrNull()
+
+                            if (status == null) {
+                                println("Opção inválida. Tente novamente.")
+                            }
+                        }
+
+                        when (status) {
+                            1 -> {
+                                handleResult(taskManager.updateTask(id = id, isCompleted = !isCompleted))
+                            }
+
+                            else -> println("OK! Sua tarefa continua com o mesmo status.")
+                        }
+                    }
+
+                }
+
+                3 -> {
+                    var id: String? = null
+
+                    println("Insira o ID da tarefa para realizar a busca:")
+                    while (id.isNullOrBlank()) {
+                        print("-> ")
+                        id = readlnOrNull()
+
+                        if (id.isNullOrBlank()) {
+                            println("O ID inserido é inválido. Insira novamente.")
+                            id = null
+                        }
+                    }
+
+                    val task = taskManager.findTask(id = id)
+
                     println(
-                        "Essa tarefa está com o STATUS: ${statusTask(isCompleted)}. Gostaria de mudar para ${
-                            statusTask(
-                                !isCompleted
-                            )
-                        }?"
+                        if (task != null) {
+                            "A tarefa buscada é: ${task.toFormattedString()}"
+                        } else {
+                            "Não existe nenhuma tarefa com esse ID."
+                        }
                     )
+                }
+
+                4 -> {
+                    var id: String? = null
+
+                    println("Insira o ID da tarefa a ser deletado:")
+                    while (id.isNullOrBlank()) {
+                        print("-> ")
+                        id = readlnOrNull()
+
+                        if (id.isNullOrBlank()) {
+                            println("O ID inserido é inválido. Insira novamente.")
+                            id = null
+                        }
+                    }
+
+                    handleResult(taskManager.removeTask(id = id))
+                }
+
+                5 -> {
+                    var status: Int? = null
 
                     while (status == null) {
-                        print("Digite 1 para SIM ou 2 para NÃO -> ")
+                        print("Digite 1 para CONCLUÍDA ou 2 para PENDENTE -> ")
                         status = readlnOrNull()?.toIntOrNull()
 
                         if (status == null) {
@@ -170,97 +264,26 @@ fun main() {
                         }
                     }
 
-                    when (status) {
-                        1 -> {
-                            if (taskManager.updateTask(id = id, isCompleted = !isCompleted)) {
-                                println("Tarefa atualizada com sucesso!")
-                            } else {
-                                println("Não foi possível atualizar sua tarefa.")
-                            }
-                        }
+                    val tasksFiltered = taskManager.findTasksByStatus(isCompleted = status == 1)
 
-                        else -> println("OK! Sua tarefa continua com o mesmo status.")
-                    }
-                }
-
-            }
-
-            3 -> {
-                var id: String? = null
-
-                println("Insira o ID da tarefa para realizar a busca:")
-                while (id.isNullOrBlank()) {
-                    print("-> ")
-                    id = readlnOrNull()
-
-                    if (id.isNullOrBlank()) {
-                        println("O ID inserido é inválido. Insira novamente.")
-                        id = null
-                    }
-                }
-
-                val task = taskManager.findTask(id = id)
-
-                println(
-                    if (task != null) {
-                        "A tarefa buscada é: $task"
+                    if (tasksFiltered.isNotEmpty()) {
+                        println("SUAS TAREFAS ${if (status == 1) "CONCLUÍDAS" else "PENDENTES"}:")
+                        println(
+                            tasksFiltered.joinToString(
+                                separator = "\n",
+                                transform = { task -> task.toFormattedString() }
+                            ))
                     } else {
-                        "Não existe nenhuma tarefa com esse ID."
-                    }
-                )
-            }
-
-            4 -> {
-                var id: String? = null
-
-                println("Insira o ID da tarefa a ser deletado:")
-                while (id.isNullOrBlank()) {
-                    print("-> ")
-                    id = readlnOrNull()
-
-                    if (id.isNullOrBlank()) {
-                        println("O ID inserido é inválido. Insira novamente.")
-                        id = null
+                        println("Nenhuma tarefa com esse status.")
                     }
                 }
 
-                val task = taskManager.removeTask(id = id)
-
-                println(if (task) "A tarefa foi deletad com SUCESSO." else "Não existe nenhuma tarefa com esse ID.")
-            }
-
-            5 -> {
-                var status: Int? = null
-
-                while (status == null) {
-                    print("Digite 1 para CONCLUÍDA ou 2 para PENDENTE -> ")
-                    status = readlnOrNull()?.toIntOrNull()
-
-                    if (status == null) {
-                        println("Opção inválida. Tente novamente.")
-                    }
+                6 -> {
+                    println("Obrigado. Volte sempre!")
                 }
 
-                val tasksFiltered = taskManager.findTasksByStatus(isCompleted = status == 1)
-
-                if (tasksFiltered.isNotEmpty()) {
-                    println("SUAS TAREFAS ${if (status == 1) "CONCLUÍDAS" else "PENDENTES"}:")
-                    println(tasksFiltered.joinToString(
-                        separator = "\n",
-                        transform = { (id, title, isCompleted) ->
-                            "ID: $id, TÍTULO: $title, STATUS: ${statusTask(isCompleted)}"
-                        }
-                    ))
-                } else {
-                    println("Nenhuma tarefa com esse status.")
-                }
+                else -> println("Opcão escolhida é inválida. Tente novamente.")
             }
-
-            6 -> {
-                println("Obrigado. Volte sempre!")
-            }
-
-            else -> println("Opcão escolhida é inválida. Tente novamente.")
         }
     }
 }

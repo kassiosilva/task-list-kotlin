@@ -39,6 +39,10 @@ class TaskManager {
         Task(title = "Teste 4"),
         Task(title = "Teste 5"),
         Task(title = "Teste 6"),
+        Task(title = "Teste 7", isCompleted = true),
+        Task(title = "Teste 8", isCompleted = true),
+        Task(title = "Teste 9"),
+        Task(title = "Teste 10", isCompleted = true),
     )
 
     fun addNewTask(task: Task) = tasks.add(task)
@@ -147,7 +151,7 @@ fun main() {
 
                 val taskToBeUpdated = taskManager.findTask(id = id)
 
-                taskToBeUpdated?.let { (_, _, isCompleted) ->
+                taskToBeUpdated?.let { (id, _, isCompleted) ->
                     var status: Int? = null
                     println(
                         "Essa tarefa está com o STATUS: ${statusTask(isCompleted)}. Gostaria de mudar para ${
@@ -157,7 +161,7 @@ fun main() {
                         }?"
                     )
 
-                    while(status == null) {
+                    while (status == null) {
                         print("Digite 1 para SIM ou 2 para NÃO -> ")
                         status = readlnOrNull()?.toIntOrNull()
 
@@ -174,15 +178,84 @@ fun main() {
                                 println("Não foi possível atualizar sua tarefa.")
                             }
                         }
+
                         else -> println("OK! Sua tarefa continua com o mesmo status.")
                     }
                 }
 
             }
 
-            3 -> {}
-            4 -> {}
-            5 -> {}
+            3 -> {
+                var id: String? = null
+
+                println("Insira o ID da tarefa para realizar a busca:")
+                while (id.isNullOrBlank()) {
+                    print("-> ")
+                    id = readlnOrNull()
+
+                    if (id.isNullOrBlank()) {
+                        println("O ID inserido é inválido. Insira novamente.")
+                        id = null
+                    }
+                }
+
+                val task = taskManager.findTask(id = id)
+
+                println(
+                    if (task != null) {
+                        "A tarefa buscada é: $task"
+                    } else {
+                        "Não existe nenhuma tarefa com esse ID."
+                    }
+                )
+            }
+
+            4 -> {
+                var id: String? = null
+
+                println("Insira o ID da tarefa a ser deletado:")
+                while (id.isNullOrBlank()) {
+                    print("-> ")
+                    id = readlnOrNull()
+
+                    if (id.isNullOrBlank()) {
+                        println("O ID inserido é inválido. Insira novamente.")
+                        id = null
+                    }
+                }
+
+                val task = taskManager.removeTask(id = id)
+
+                println(if (task) "A tarefa foi deletad com SUCESSO." else "Não existe nenhuma tarefa com esse ID.")
+            }
+
+            5 -> {
+                var status: Int? = null
+
+                while (status == null) {
+                    print("Digite 1 para CONCLUÍDA ou 2 para PENDENTE -> ")
+                    status = readlnOrNull()?.toIntOrNull()
+
+                    if (status == null) {
+                        println("Opção inválida. Tente novamente.")
+                    }
+                }
+
+                val tasksFiltered = taskManager.findTasksByStatus(isCompleted = status == 1)
+
+                if (tasksFiltered.isNotEmpty()) {
+                    println("SUAS TAREFAS ${if (status == 1) "CONCLUÍDAS" else "PENDENTES"}:")
+                    println(tasksFiltered.joinToString(
+                        separator = "\n",
+                        transform = { (id, title, isCompleted) ->
+                            "ID: $id, TÍTULO: $title, STATUS: ${statusTask(isCompleted)}"
+                        }
+                    ))
+                } else {
+                    println("Nenhuma tarefa com esse status.")
+                }
+            }
+
             6 -> {
                 println("Obrigado. Volte sempre!")
             }
